@@ -1,20 +1,33 @@
-###### The types of data: Microarray and RNA-Seq #######################
+###### INPUT ARGUEMENTS#########
 args <- commandArgs(trailingOnly = T)
-data <- args[1]
-###############REFERENCE######################
-PYTHON.PATH = "/Users/anaconda3/bin/python3.6"
 
-norm.table <- read.csv("normalized_table.csv",row.names = 1)
-print(dim(norm.table))
-if(data == "microarray"){
-  reference_gene = system2(PYTHON.PATH,args="src/ref_sel_test_symbol.py",stdout=T)
-} else if (data == "RNASeq"){
-  reference_gene = system2(PYTHON.PATH,args="src/ref_sel_test.py",stdout=T)
-}
+PYTHON.PATH <- args[1]
 
-print(paste0("the reference genes:",paste(reference_gene,collapse = ",")))
+print("--------------------------------------------------")
+print("Step 2 - Find Reference Genes")
+print("--------------------------------------------------")
+
+print("Reading input files.")
+norm.table <- read.csv("results/normalized_table.csv", row.names = 1)
+out <- read.csv("final_out.csv", row.names = 1)
+
+intermediate <- norm.table[row.names(norm.table) %in% row.names(out), ]
+
+print("Determining reference range.")
+refRange <- quantile(as.numeric(data.matrix(intermediate)), probs = c(0.18, 0.38, 0.58, 0.78, 0.22, 0.42, 0.62, 0.82))
+
+sink("data/referenceRanges.csv")
+print(refRange)
+sink()
+
+#DATA FORMATTING
+reference_gene = system2(PYTHON.PATH, args="src/ref_sel_test_symbol.py",stdout=T)
+
+print(paste0("Reference genes: ",paste(reference_gene, collapse = ",")))
+print("* ^^^ There should be 4 results here. ^^^ *")
 ref_cpm <- norm.table[reference_gene,]
-write.csv(ref_cpm, "ref_cpm.csv")
-save(reference_gene,file = "ref.gene.bin")
 
-
+#CREATES THE GUIDELINE COUNTS PER MILLION TO ASSOCIATE WITH 1-5 CATEGORIZATION
+write.csv(ref_cpm, "results/ref_cpm.csv")
+print("Saving a bin for the reference genes.")
+save(reference_gene, file = "ref.gene.bin")
